@@ -60,9 +60,10 @@ const (
 )
 
 var (
-	templates *template.Template
-	dbx       *sqlx.DB
-	store     sessions.Store
+	templates   *template.Template
+	dbx         *sqlx.DB
+	store       sessions.Store
+	CategoryMap = make(map[int]Category)
 )
 
 type Config struct {
@@ -278,6 +279,15 @@ func init() {
 	))
 }
 
+func initCategories(sqlx *sqlx.DB) {
+	CategoryMap = make(map[int]Category)
+	categories := []Category{}
+	_ = sqlx.Get(&categories, "select a.id, a.parent_id, a.category_name, b.category_name as `parent_category_name` from `categories` a left join `categories` b on a.parent_id = b.id")
+	for _, category := range categories {
+		CategoryMap[category.ID] = category
+	}
+}
+
 func main() {
 	host := os.Getenv("MYSQL_HOST")
 	if host == "" {
@@ -318,6 +328,8 @@ func main() {
 		log.Fatalf("failed to connect to DB: %s.", err.Error())
 	}
 	defer dbx.Close()
+
+	initCategories(dbx)
 
 	mux := goji.NewMux()
 
@@ -408,15 +420,15 @@ func getUserSimpleByID(q sqlx.Queryer, userID int64) (userSimple UserSimple, err
 }
 
 func getCategoryByID(q sqlx.Queryer, categoryID int) (category Category, err error) {
-	err = sqlx.Get(q, &category, "SELECT * FROM `categories` WHERE `id` = ?", categoryID)
-	if category.ParentID != 0 {
-		parentCategory, err := getCategoryByID(q, category.ParentID)
-		if err != nil {
-			return category, err
-		}
-		category.ParentCategoryName = parentCategory.CategoryName
-	}
-	return category, err
+	// err = sqlx.Get(q, &category, "SELECT * FROM `categories` WHERE `id` = ?", categoryID)
+	// if category.ParentID != 0 {
+	// 	parentCategory, err := getCategoryByID(q, category.ParentID)
+	// 	if err != nil {
+	// 		return category, err
+	// 	}
+	// 	category.ParentCategoryName = parentCategory.CategoryName
+	// }
+	return CategoryMap[categoryID], nil
 }
 
 func getConfigByName(name string) (string, error) {
