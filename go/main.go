@@ -282,7 +282,7 @@ func init() {
 func initCategories(sqlx *sqlx.DB) {
 	CategoryMap = make(map[int]Category)
 	categories := []Category{}
-	_ = sqlx.Get(&categories, "select a.id, a.parent_id, a.category_name, b.category_name as `parent_category_name` from `categories` a left join `categories` b on a.parent_id = b.id")
+	_ = sqlx.Get(&categories, "select a.id as `id`, a.parent_id as `parent_id` , a.category_name as `category_name` , b.category_name as `parent_category_name` from `categories` a left join `categories` b on a.parent_id = b.id")
 	for _, category := range categories {
 		CategoryMap[category.ID] = category
 	}
@@ -328,8 +328,6 @@ func main() {
 		log.Fatalf("failed to connect to DB: %s.", err.Error())
 	}
 	defer dbx.Close()
-
-	initCategories(dbx)
 
 	mux := goji.NewMux()
 
@@ -509,6 +507,8 @@ func postInitialize(w http.ResponseWriter, r *http.Request) {
 		// 実装言語を返す
 		Language: "Go",
 	}
+
+	initCategories(dbx)
 
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
 	json.NewEncoder(w).Encode(res)
