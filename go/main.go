@@ -282,7 +282,10 @@ func init() {
 func initCategories(sqlx *sqlx.DB) {
 	CategoryMap = make(map[int]Category)
 	categories := []Category{}
-	_ = sqlx.Get(&categories, "select a.id as `id`, a.parent_id as `parent_id` , a.category_name as `category_name` , b.category_name as `parent_category_name` from `categories` a left join `categories` b on a.parent_id = b.id")
+	err := sqlx.Select(&categories, "SELECT a.id AS `id`, a.parent_id AS `parent_id`, a.category_name AS `category_name`, b.category_name AS `parent_category_name` FROM `categories` a LEFT JOIN `categories` b ON a.parent_id = b.id")
+	if err != nil {
+		log.Fatal(err)
+	}
 	for _, category := range categories {
 		CategoryMap[category.ID] = category
 	}
