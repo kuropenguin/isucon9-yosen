@@ -61,12 +61,13 @@ const (
 )
 
 var (
-	templates           *template.Template
-	dbx                 *sqlx.DB
-	store               sessions.Store
-	CategoryMap         = make(map[int]Category)
-	UserSimpleMap       = make(map[int64]*UserSimple)
-	ShipmentStatusCache = make(map[string]string)
+	templates             *template.Template
+	dbx                   *sqlx.DB
+	store                 sessions.Store
+	CategoryMap           = make(map[int]Category)
+	UserSimpleMap         = make(map[int64]*UserSimple)
+	TxEvidenceMapByItemID = make(map[int64]*TransactionEvidence)
+	ShipmentStatusCache   = make(map[string]string)
 )
 
 type Config struct {
@@ -292,6 +293,17 @@ func initCategories(sqlx *sqlx.DB) {
 	}
 	for _, category := range categories {
 		CategoryMap[category.ID] = category
+	}
+}
+
+func initTxEvidence(sqlx *sqlx.DB) {
+	txEvidences := []TransactionEvidence{}
+	err := sqlx.Select(&txEvidences, "SELECT * FROM `transaction_evidences`")
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, txEvidence := range txEvidences {
+		TxEvidenceMapByItemID[txEvidence.ItemID] = &txEvidence
 	}
 }
 
@@ -544,6 +556,7 @@ func postInitialize(w http.ResponseWriter, r *http.Request) {
 
 	initCategories(dbx)
 	initUsers(dbx)
+	initTxEvidence(dbx)
 	initShipmentStatus()
 
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
@@ -1504,6 +1517,11 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tx.Commit()
+	// status と item id しか使わないので他は捨ててok
+	TxEvidenceMapByItemID[targetItem.ID] = &TransactionEvidence{
+		ItemID: targetItem.ID,
+		Status: TransactionEvidenceStatusWaitShipping,
+	}
 
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
 	json.NewEncoder(w).Encode(resBuy{TransactionEvidenceID: transactionEvidenceID})
@@ -1781,6 +1799,7 @@ func postShipDone(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tx.Commit()
+	TxEvidenceMapByItemID[itemID].Status = TransactionEvidenceStatusDone
 
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
 	json.NewEncoder(w).Encode(resBuy{TransactionEvidenceID: transactionEvidence.ID})
@@ -1934,6 +1953,7 @@ func postComplete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tx.Commit()
+	TxEvidenceMapByItemID[itemID].Status = TransactionEvidenceStatusDone
 
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
 	json.NewEncoder(w).Encode(resBuy{TransactionEvidenceID: transactionEvidence.ID})
