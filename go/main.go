@@ -295,17 +295,8 @@ func initCategories(sqlx *sqlx.DB) {
 }
 
 func initUsers(sqlx *sqlx.DB) {
-	CategoryMap = make(map[int]Category)
-	categories := []Category{}
-	err := sqlx.Select(&categories, "SELECT a.id AS `id`, a.parent_id AS `parent_id`, a.category_name AS `category_name`, b.category_name AS `parent_category_name` FROM `categories` a LEFT JOIN `categories` b ON a.parent_id = b.id")
-	if err != nil {
-		log.Fatal(err)
-	}
-	for _, category := range categories {
-		CategoryMap[category.ID] = category
-	}
 	users := []UserSimple{}
-	err = sqlx.Select(&users, "SELECT * FROM `users`")
+	err := sqlx.Select(&users, "SELECT * FROM `users`")
 	if err != nil {
 		log.Fatal(err)
 	}
