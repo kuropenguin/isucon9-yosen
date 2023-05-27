@@ -165,10 +165,11 @@ type Shipping struct {
 }
 
 type Category struct {
-	ID                 int            `json:"id" db:"id"`
-	ParentID           int            `json:"parent_id" db:"parent_id"`
-	CategoryName       string         `json:"category_name" db:"category_name"`
-	ParentCategoryName sql.NullString `json:"parent_category_name,omitempty" db:"parent_category_name"`
+	ID                     int            `json:"id" db:"id"`
+	ParentID               int            `json:"parent_id" db:"parent_id"`
+	CategoryName           string         `json:"category_name" db:"category_name"`
+	ParentCategoryNameDB   sql.NullString `json:"-" db:"parent_category_name"`
+	ParentCategoryNameJSON string         `json:"parent_category_name,omitempty" db:"-"`
 }
 
 type reqInitialize struct {
@@ -420,7 +421,7 @@ func getUserSimpleByID(q sqlx.Queryer, userID int64) (userSimple UserSimple, err
 	return userSimple, err
 }
 
-func getCategoryByID(q sqlx.Queryer, categoryID int) (category Category, err error) {
+func getCategoryByID(q sqlx.Queryer, categoryID int) (Category, error) {
 	// err = sqlx.Get(q, &category, "SELECT * FROM `categories` WHERE `id` = ?", categoryID)
 	// if category.ParentID != 0 {
 	// 	parentCategory, err := getCategoryByID(q, category.ParentID)
@@ -429,7 +430,11 @@ func getCategoryByID(q sqlx.Queryer, categoryID int) (category Category, err err
 	// 	}
 	// 	category.ParentCategoryName = parentCategory.CategoryName
 	// }
-	return CategoryMap[categoryID], nil
+	category := CategoryMap[categoryID]
+	if category.ParentCategoryNameDB.Valid {
+		category.ParentCategoryNameJSON = category.ParentCategoryNameDB.String
+	}
+	return category, nil
 }
 
 func getConfigByName(name string) (string, error) {
