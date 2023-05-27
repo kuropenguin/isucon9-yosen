@@ -430,16 +430,20 @@ func getUser(r *http.Request) (user User, errCode int, errMsg string) {
 	return user, http.StatusOK, ""
 }
 
-func getUserSimpleByID(q sqlx.Queryer, userID int64) (userSimple UserSimple, err error) {
-	user := User{}
-	err = sqlx.Get(q, &user, "SELECT * FROM `users` WHERE `id` = ?", userID)
-	if err != nil {
-		return userSimple, err
+func getUserSimpleByID(q sqlx.Queryer, userID int64) (UserSimple, error) {
+	// user := User{}
+	// err = sqlx.Get(q, &user, "SELECT * FROM `users` WHERE `id` = ?", userID)
+	// if err != nil {
+	// 	return userSimple, err
+	// }
+	// userSimple.ID = user.ID
+	// userSimple.AccountName = user.AccountName
+	// userSimple.NumSellItems = user.NumSellItems
+	// return userSimple, err
+	if _, ok := UserSimpleMap[userID]; !ok {
+		return UserSimple{}, fmt.Errorf("user not found")
 	}
-	userSimple.ID = user.ID
-	userSimple.AccountName = user.AccountName
-	userSimple.NumSellItems = user.NumSellItems
-	return userSimple, err
+	return *UserSimpleMap[userID], nil
 }
 
 func getCategoryByID(q sqlx.Queryer, categoryID int) (Category, error) {
