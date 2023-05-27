@@ -165,10 +165,10 @@ type Shipping struct {
 }
 
 type Category struct {
-	ID                 int    `json:"id" db:"id"`
-	ParentID           int    `json:"parent_id" db:"parent_id"`
-	CategoryName       string `json:"category_name" db:"category_name"`
-	ParentCategoryName string `json:"parent_category_name,omitempty" db:"parent_category_name,omitempty"`
+	ID                 int            `json:"id" db:"id"`
+	ParentID           int            `json:"parent_id" db:"parent_id"`
+	CategoryName       string         `json:"category_name" db:"category_name"`
+	ParentCategoryName sql.NullString `json:"parent_category_name,omitempty" db:"parent_category_name"`
 }
 
 type reqInitialize struct {
