@@ -1023,7 +1023,7 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 			itemDetail.Buyer = &buyer
 		}
 
-		transactionEvidence := TxEvidenceMapByItemID[item.ID]
+		transactionEvidence := getTxEvidenceByItemID(item.ID)
 		// err = tx.Get(&transactionEvidence, "SELECT * FROM `transaction_evidences` WHERE `item_id` = ?", item.ID)
 		// if err != nil && err != sql.ErrNoRows {
 		// 	// It's able to ignore ErrNoRows
@@ -2396,4 +2396,13 @@ func outputErrorMsg(w http.ResponseWriter, status int, msg string) {
 
 func getImageURL(imageName string) string {
 	return fmt.Sprintf("/upload/%s", imageName)
+}
+
+func getTxEvidenceByItemID(itemID int64) TransactionEvidence {
+	if txEvidence, ok := TxEvidenceMapByItemID[itemID]; ok {
+		return *txEvidence
+	}
+	return TransactionEvidence{
+		ID: 0,
+	}
 }
