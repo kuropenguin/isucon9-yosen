@@ -1799,7 +1799,7 @@ func postShipDone(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tx.Commit()
-	TxEvidenceMapByItemID[itemID].Status = TransactionEvidenceStatusDone
+	TxEvidenceMapByItemID[itemID].Status = TransactionEvidenceStatusWaitDone
 
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
 	json.NewEncoder(w).Encode(resBuy{TransactionEvidenceID: transactionEvidence.ID})
