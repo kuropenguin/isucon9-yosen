@@ -61,10 +61,11 @@ const (
 )
 
 var (
-	templates   *template.Template
-	dbx         *sqlx.DB
-	store       sessions.Store
-	CategoryMap = make(map[int]Category)
+	templates     *template.Template
+	dbx           *sqlx.DB
+	store         sessions.Store
+	CategoryMap   = make(map[int]Category)
+	UserSimpleMap = make(map[int64]*UserSimple)
 )
 
 type Config struct {
@@ -290,6 +291,26 @@ func initCategories(sqlx *sqlx.DB) {
 	}
 	for _, category := range categories {
 		CategoryMap[category.ID] = category
+	}
+}
+
+func initUsers(sqlx *sqlx.DB) {
+	CategoryMap = make(map[int]Category)
+	categories := []Category{}
+	err := sqlx.Select(&categories, "SELECT a.id AS `id`, a.parent_id AS `parent_id`, a.category_name AS `category_name`, b.category_name AS `parent_category_name` FROM `categories` a LEFT JOIN `categories` b ON a.parent_id = b.id")
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, category := range categories {
+		CategoryMap[category.ID] = category
+	}
+	users := []UserSimple{}
+	err = sqlx.Select(&users, "SELECT * FROM `users`")
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, userSimple := range users {
+		UserSimpleMap[userSimple.ID] = &userSimple
 	}
 }
 
@@ -522,6 +543,7 @@ func postInitialize(w http.ResponseWriter, r *http.Request) {
 	}
 
 	initCategories(dbx)
+	initUsers(dbx)
 
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
 	json.NewEncoder(w).Encode(res)
@@ -2048,6 +2070,7 @@ func postSell(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	tx.Commit()
+	UserSimpleMap[seller.ID].NumSellItems += 1
 
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
 	json.NewEncoder(w).Encode(resSell{ID: itemID})
@@ -2311,6 +2334,12 @@ func postRegister(w http.ResponseWriter, r *http.Request) {
 		log.Print(err)
 		outputErrorMsg(w, http.StatusInternalServerError, "session error")
 		return
+	}
+
+	UserSimpleMap[userID] = &UserSimple{
+		ID:           userID,
+		AccountName:  accountName,
+		NumSellItems: 0,
 	}
 
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
