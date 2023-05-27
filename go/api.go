@@ -115,7 +115,7 @@ func APIShipmentCreate(shipmentURL string, param *APIShipmentCreateReq) (*APIShi
 	if err != nil {
 		return nil, err
 	}
-
+	ShipmentStatusCache[scr.ReserveID] = ShippingsStatusInitial
 	return scr, nil
 }
 
@@ -144,12 +144,20 @@ func APIShipmentRequest(shipmentURL string, param *APIShipmentRequestReq) ([]byt
 		}
 		return nil, fmt.Errorf("status code: %d; body: %s", res.StatusCode, b)
 	}
+	// 出荷準備ができると、その後は api を叩かないと状態がわからないので、キャッシュを削除する
+	delete(ShipmentStatusCache, param.ReserveID)
 
 	return ioutil.ReadAll(res.Body)
 }
 
 func APIShipmentStatus(shipmentURL string, param *APIShipmentStatusReq) (*APIShipmentStatusRes, error) {
 	b, _ := json.Marshal(param)
+
+	if _, ok := ShipmentStatusCache[param.ReserveID]; ok {
+		return &APIShipmentStatusRes{
+			Status: ShipmentStatusCache[param.ReserveID],
+		}, nil
+	}
 
 	req, err := http.NewRequest(http.MethodGet, shipmentURL+"/status", bytes.NewBuffer(b))
 	if err != nil {
@@ -179,6 +187,8 @@ func APIShipmentStatus(shipmentURL string, param *APIShipmentStatusReq) (*APIShi
 	if err != nil {
 		return nil, err
 	}
-
+	if ssr.Status == ShippingsStatusInitial || ssr.Status == ShippingsStatusDone {
+		ShipmentStatusCache[param.ReserveID] = ssr.Status
+	}
 	return ssr, nil
 }

@@ -61,11 +61,12 @@ const (
 )
 
 var (
-	templates     *template.Template
-	dbx           *sqlx.DB
-	store         sessions.Store
-	CategoryMap   = make(map[int]Category)
-	UserSimpleMap = make(map[int64]*UserSimple)
+	templates           *template.Template
+	dbx                 *sqlx.DB
+	store               sessions.Store
+	CategoryMap         = make(map[int]Category)
+	UserSimpleMap       = make(map[int64]*UserSimple)
+	ShipmentStatusCache = make(map[string]string)
 )
 
 type Config struct {
@@ -543,9 +544,14 @@ func postInitialize(w http.ResponseWriter, r *http.Request) {
 
 	initCategories(dbx)
 	initUsers(dbx)
+	initShipmentStatus()
 
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
 	json.NewEncoder(w).Encode(res)
+}
+
+func initShipmentStatus() {
+	ShipmentStatusCache = make(map[string]string)
 }
 
 func getNewItems(w http.ResponseWriter, r *http.Request) {
