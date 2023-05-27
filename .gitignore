@@ -6,3 +6,4 @@ public
 nodejs
 frontend
 build.sh
+pprof/*
