@@ -857,6 +857,7 @@ func getUserItems(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(rui)
 }
 
+// ============= getTransactions ==============
 func getTransactions(w http.ResponseWriter, r *http.Request) {
 
 	user, errCode, errMsg := getUser(r)
@@ -1035,6 +1036,8 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(rts)
 
 }
+
+// ============= getTransactions ==============
 
 func getItem(w http.ResponseWriter, r *http.Request) {
 	itemIDStr := pat.Param(r, "item_id")
