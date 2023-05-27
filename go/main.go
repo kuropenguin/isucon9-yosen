@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -293,6 +294,10 @@ func initCategories(sqlx *sqlx.DB) {
 }
 
 func main() {
+	// pprof用のエンドポイントを公開する
+	go func() {
+		http.ListenAndServe("localhost:6060", nil)
+	}()
 	host := os.Getenv("MYSQL_HOST")
 	if host == "" {
 		host = "127.0.0.1"
