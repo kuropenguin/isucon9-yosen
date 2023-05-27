@@ -295,13 +295,17 @@ func initCategories(sqlx *sqlx.DB) {
 }
 
 func initUsers(sqlx *sqlx.DB) {
-	users := []UserSimple{}
+	users := []User{}
 	err := sqlx.Select(&users, "SELECT * FROM `users`")
 	if err != nil {
 		log.Fatal(err)
 	}
-	for _, userSimple := range users {
-		UserSimpleMap[userSimple.ID] = &userSimple
+	for _, user := range users {
+		UserSimpleMap[user.ID] = &UserSimple{
+			ID:           user.ID,
+			AccountName:  user.AccountName,
+			NumSellItems: user.NumSellItems,
+		}
 	}
 }
 
