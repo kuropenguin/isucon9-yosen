@@ -1519,6 +1519,7 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 	tx.Commit()
 	// status と item id しか使わないので他は捨ててok
 	TxEvidenceMapByItemID[targetItem.ID] = &TransactionEvidence{
+		ID:     transactionEvidenceID,
 		ItemID: targetItem.ID,
 		Status: TransactionEvidenceStatusWaitShipping,
 	}
