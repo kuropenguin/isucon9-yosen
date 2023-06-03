@@ -68,6 +68,7 @@ var (
 	UserSimpleMap         = make(map[int64]*UserSimple)
 	TxEvidenceMapByItemID = make(map[int64]*TransactionEvidence)
 	ShipmentStatusCache   = make(map[string]string)
+	URLConfigs            = make(map[string]string)
 )
 
 type Config struct {
@@ -296,6 +297,10 @@ func initCategories(sqlx *sqlx.DB) {
 	}
 }
 
+func initURLConfigs() {
+	URLConfigs = make(map[string]string)
+}
+
 func initTxEvidence(sqlx *sqlx.DB) {
 	txEvidences := []TransactionEvidence{}
 	err := sqlx.Select(&txEvidences, "SELECT * FROM `transaction_evidences`")
@@ -477,6 +482,9 @@ func getCategoryByID(q sqlx.Queryer, categoryID int) (Category, error) {
 
 func getConfigByName(name string) (string, error) {
 	config := Config{}
+	if _, ok := URLConfigs[name]; ok {
+		return URLConfigs[name], nil
+	}
 	err := dbx.Get(&config, "SELECT * FROM `configs` WHERE `name` = ?", name)
 	if err == sql.ErrNoRows {
 		return "", nil
@@ -485,6 +493,7 @@ func getConfigByName(name string) (string, error) {
 		log.Print(err)
 		return "", err
 	}
+	URLConfigs[name] = config.Val
 	return config.Val, err
 }
 
@@ -558,6 +567,7 @@ func postInitialize(w http.ResponseWriter, r *http.Request) {
 	initUsers(dbx)
 	initTxEvidence(dbx)
 	initShipmentStatus()
+	initURLConfigs()
 
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
 	json.NewEncoder(w).Encode(res)
