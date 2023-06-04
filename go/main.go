@@ -1098,11 +1098,10 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 				itemDetail.ShippingStatus = ssr.Status
 			}(tx, &itemDetail, &transactionEvidence, &wg)
 		}
-
 		itemDetails = append(itemDetails, itemDetail)
 	}
-	tx.Commit()
 	wg.Wait()
+	tx.Commit()
 
 	hasNext := false
 	if len(itemDetails) > TransactionsPerPage {
