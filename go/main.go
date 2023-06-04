@@ -69,6 +69,7 @@ var (
 	TxEvidenceMapByItemID = make(map[int64]*TransactionEvidence)
 	ShipmentStatusCache   = make(map[string]string)
 	URLConfigs            = make(map[string]string)
+	ReserveIDCache        = make(map[int64]string)
 )
 
 type Config struct {
@@ -299,6 +300,18 @@ func initCategories(sqlx *sqlx.DB) {
 
 func initURLConfigs() {
 	URLConfigs = make(map[string]string)
+}
+
+func initReserveID(sqlx *sqlx.DB) {
+	ReserveIDCache = make(map[int64]string)
+	shippings := []Shipping{}
+	err := sqlx.Select(&shippings, "SELECT * FROM `shippings`")
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, shipping := range shippings {
+		ReserveIDCache[shipping.TransactionEvidenceID] = shipping.ReserveID
+	}
 }
 
 func initTxEvidence(sqlx *sqlx.DB) {
@@ -568,6 +581,7 @@ func postInitialize(w http.ResponseWriter, r *http.Request) {
 	initTxEvidence(dbx)
 	initShipmentStatus()
 	initURLConfigs()
+	initReserveID(dbx)
 
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
 	json.NewEncoder(w).Encode(res)
@@ -1044,21 +1058,28 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 		// }
 
 		if transactionEvidence.ID > 0 {
-			shipping := Shipping{}
-			err = tx.Get(&shipping, "SELECT * FROM `shippings` WHERE `transaction_evidence_id` = ?", transactionEvidence.ID)
-			if err == sql.ErrNoRows {
-				outputErrorMsg(w, http.StatusNotFound, "shipping not found")
-				tx.Rollback()
-				return
-			}
-			if err != nil {
-				log.Print(err)
-				outputErrorMsg(w, http.StatusInternalServerError, "db error")
-				tx.Rollback()
-				return
+			var reserveID string
+			if _, ok := ReserveIDCache[transactionEvidence.ID]; ok {
+				reserveID = ReserveIDCache[transactionEvidence.ID]
+			} else {
+				shipping := Shipping{}
+				err = tx.Get(&shipping, "SELECT * FROM `shippings` WHERE `transaction_evidence_id` = ?", transactionEvidence.ID)
+				if err == sql.ErrNoRows {
+					outputErrorMsg(w, http.StatusNotFound, "shipping not found")
+					tx.Rollback()
+					return
+				}
+				if err != nil {
+					log.Print(err)
+					outputErrorMsg(w, http.StatusInternalServerError, "db error")
+					tx.Rollback()
+					return
+				}
+				reserveID = shipping.ReserveID
+				ReserveIDCache[transactionEvidence.ID] = reserveID
 			}
 			ssr, err := APIShipmentStatus(getShipmentServiceURL(), &APIShipmentStatusReq{
-				ReserveID: shipping.ReserveID,
+				ReserveID: reserveID,
 			})
 			if err != nil {
 				log.Print(err)
@@ -1533,6 +1554,7 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 		ItemID: targetItem.ID,
 		Status: TransactionEvidenceStatusWaitShipping,
 	}
+	ReserveIDCache[transactionEvidenceID] = scr.ReserveID
 
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
 	json.NewEncoder(w).Encode(resBuy{TransactionEvidenceID: transactionEvidenceID})
