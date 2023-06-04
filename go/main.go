@@ -287,10 +287,10 @@ func init() {
 	))
 }
 
-func initCategories(sqlx *sqlx.DB) {
+func initCategories() {
 	CategoryMap = make(map[int]Category)
 	categories := []Category{}
-	err := sqlx.Select(&categories, "SELECT a.id AS `id`, a.parent_id AS `parent_id`, a.category_name AS `category_name`, b.category_name AS `parent_category_name` FROM `categories` a LEFT JOIN `categories` b ON a.parent_id = b.id")
+	err := dbx.Select(&categories, "SELECT a.id AS `id`, a.parent_id AS `parent_id`, a.category_name AS `category_name`, b.category_name AS `parent_category_name` FROM `categories` a LEFT JOIN `categories` b ON a.parent_id = b.id")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -487,6 +487,9 @@ func getCategoryByID(q sqlx.Queryer, categoryID int) (Category, error) {
 	// 	}
 	// 	category.ParentCategoryName = parentCategory.CategoryName
 	// }
+	if _, ok := CategoryMap[categoryID]; !ok {
+		initCategories()
+	}
 	category := CategoryMap[categoryID]
 	if category.ParentCategoryNameDB.Valid {
 		category.ParentCategoryNameJSON = category.ParentCategoryNameDB.String
@@ -577,7 +580,7 @@ func postInitialize(w http.ResponseWriter, r *http.Request) {
 		Language: "Go",
 	}
 
-	initCategories(dbx)
+	initCategories()
 	initUsers(dbx)
 	initTxEvidence(dbx)
 	initShipmentStatus()
