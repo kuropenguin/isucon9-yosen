@@ -1105,7 +1105,8 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 	wg.Wait()
 	tx.Commit()
 
-	for _, itemDetail := range itemDetails {
+	for idx, _ := range itemDetails {
+		itemDetail := &itemDetails[idx]
 		if status, ok := txEvicenceIDShipStatus.Load(itemDetail.TransactionEvidenceID); ok {
 			itemDetail.ShippingStatus = status.(string)
 		}
