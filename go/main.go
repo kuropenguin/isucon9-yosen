@@ -1199,14 +1199,15 @@ func getItem(w http.ResponseWriter, r *http.Request) {
 		itemDetail.BuyerID = item.BuyerID
 		itemDetail.Buyer = &buyer
 
-		transactionEvidence := TransactionEvidence{}
-		err = dbx.Get(&transactionEvidence, "SELECT * FROM `transaction_evidences` WHERE `item_id` = ?", item.ID)
-		if err != nil && err != sql.ErrNoRows {
-			// It's able to ignore ErrNoRows
-			log.Print(err)
-			outputErrorMsg(w, http.StatusInternalServerError, "db error")
-			return
-		}
+		// transactionEvidence := TransactionEvidence{}
+		// err = dbx.Get(&transactionEvidence, "SELECT * FROM `transaction_evidences` WHERE `item_id` = ?", item.ID)
+		// if err != nil && err != sql.ErrNoRows {
+		// It's able to ignore ErrNoRows
+		// log.Print(err)
+		// outputErrorMsg(w, http.StatusInternalServerError, "db error")
+		// return
+		// }
+		transactionEvidence := getTxEvidenceByItemID(itemID)
 
 		if transactionEvidence.ID > 0 {
 			shipping := Shipping{}
