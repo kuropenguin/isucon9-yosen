@@ -46,20 +46,10 @@ CREATE TABLE
     ) ENGINE = InnoDB DEFAULT CHARACTER SET utf8mb4;
 
 CREATE INDEX
-    seller_status_created_at_id ON items (
-        seller_id,
-        status,
-        created_at,
-        id
-    );
+    seller_created_at_id ON items (seller_id, created_at, id);
 
 CREATE INDEX
-    buyer_status_created_at_id ON items (
-        buyer_id,
-        status,
-        created_at,
-        id
-    );
+    buyer_created_at_id ON items (buyer_id, created_at, id);
 
 DROP TABLE IF EXISTS `transaction_evidences`;
 
