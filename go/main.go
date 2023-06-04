@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -1003,6 +1004,7 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	itemDetails := []ItemDetail{}
+	var wg sync.WaitGroup
 	for _, item := range items {
 		seller, err := getUserSimpleByID(tx, item.SellerID)
 		if err != nil {
@@ -1058,44 +1060,49 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 		// }
 
 		if transactionEvidence.ID > 0 {
-			var reserveID string
-			if _, ok := ReserveIDCache[transactionEvidence.ID]; ok {
-				reserveID = ReserveIDCache[transactionEvidence.ID]
-			} else {
-				shipping := Shipping{}
-				err = tx.Get(&shipping, "SELECT * FROM `shippings` WHERE `transaction_evidence_id` = ?", transactionEvidence.ID)
-				if err == sql.ErrNoRows {
-					outputErrorMsg(w, http.StatusNotFound, "shipping not found")
-					tx.Rollback()
-					return
+			wg.Add(1)
+			go func(tx *sqlx.Tx, itemDetail *ItemDetail, transactionEvidence *TransactionEvidence, wg *sync.WaitGroup) {
+				defer wg.Done()
+				var reserveID string
+				if _, ok := ReserveIDCache[transactionEvidence.ID]; ok {
+					reserveID = ReserveIDCache[transactionEvidence.ID]
+				} else {
+					shipping := Shipping{}
+					err = tx.Get(&shipping, "SELECT * FROM `shippings` WHERE `transaction_evidence_id` = ?", transactionEvidence.ID)
+					if err == sql.ErrNoRows {
+						outputErrorMsg(w, http.StatusNotFound, "shipping not found")
+						tx.Rollback()
+						return
+					}
+					if err != nil {
+						log.Print(err)
+						outputErrorMsg(w, http.StatusInternalServerError, "db error")
+						tx.Rollback()
+						return
+					}
+					reserveID = shipping.ReserveID
+					ReserveIDCache[transactionEvidence.ID] = reserveID
 				}
+				ssr, err := APIShipmentStatus(getShipmentServiceURL(), &APIShipmentStatusReq{
+					ReserveID: reserveID,
+				})
 				if err != nil {
 					log.Print(err)
-					outputErrorMsg(w, http.StatusInternalServerError, "db error")
+					outputErrorMsg(w, http.StatusInternalServerError, "failed to request to shipment service")
 					tx.Rollback()
 					return
 				}
-				reserveID = shipping.ReserveID
-				ReserveIDCache[transactionEvidence.ID] = reserveID
-			}
-			ssr, err := APIShipmentStatus(getShipmentServiceURL(), &APIShipmentStatusReq{
-				ReserveID: reserveID,
-			})
-			if err != nil {
-				log.Print(err)
-				outputErrorMsg(w, http.StatusInternalServerError, "failed to request to shipment service")
-				tx.Rollback()
-				return
-			}
 
-			itemDetail.TransactionEvidenceID = transactionEvidence.ID
-			itemDetail.TransactionEvidenceStatus = transactionEvidence.Status
-			itemDetail.ShippingStatus = ssr.Status
+				itemDetail.TransactionEvidenceID = transactionEvidence.ID
+				itemDetail.TransactionEvidenceStatus = transactionEvidence.Status
+				itemDetail.ShippingStatus = ssr.Status
+			}(tx, &itemDetail, &transactionEvidence, &wg)
 		}
 
 		itemDetails = append(itemDetails, itemDetail)
 	}
 	tx.Commit()
+	wg.Wait()
 
 	hasNext := false
 	if len(itemDetails) > TransactionsPerPage {
